@@ -1,0 +1,51 @@
+- defaultTab: nodes
+  description: Adiciona usuário e sua chave ssh em todos os nodes
+  executionEnabled: true
+  id: 2d70425d-2588-42d6-a993-626ff22d26cb
+  loglevel: INFO
+  name: Adicionar Usuário
+  nodeFilterEditable: false
+  nodefilters:
+    dispatch:
+      excludePrecedence: true
+      keepgoing: true
+      rankOrder: ascending
+      successOnEmptyNodeFilter: false
+      threadcount: '5'
+    filter: .*
+  nodesSelectedByDefault: true
+  options:
+  - description: Nome do usuário
+    label: Usuário
+    name: user
+    regex: '[-_a-z.]{2,}'
+    required: true
+  - description: Chave pública do SSH
+    label: Chave SSH
+    name: key
+    regex: 'ssh-rsa AAAA[0-9A-Za-z+/]+[=]{0,3} ([^@]+@[^@]+)'
+    required: true
+  plugins:
+    ExecutionLifecycle: null
+  scheduleEnabled: true
+  sequence:
+    commands:
+    - description: Adiciona usuário no sistema
+      errorhandler:
+        exec: getent passwd ${option.user}
+        keepgoingOnSuccess: true
+      exec: sudo useradd -m -d /home/${option.user} -s /bin/bash ${option.user}
+    - description: Checa e adiciona a chave ssh do usuário caso não exista
+      fileExtension: .sh
+      interpreterArgsQuoted: false
+      script: "#!/bin/bash\n\n# sudo useradd -m -d /home/${option.user} -s /bin/bash\
+        \ ${option.user}\n# getent passwd ${option.user}\n\nsu -c 'mkdir -p ~/.ssh'\
+        \ @option.user@\n\ngrep \"@option.key@\" /home/@option.user@/.ssh/authorized_keys\
+        \ > /dev/null\n\nif [ $? != 0 ]; then\n\tsu -c 'echo \"@option.key@\" >> ~/.ssh/authorized_keys'\
+        \ @option.user@\n\techo 'Chave adicionada'\nelse\n\techo 'Chave já existe'\n\
+        fi\n\necho '@option.user@ ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/@option.user@\n"
+      scriptInterpreter: sudo
+    keepgoing: false
+    strategy: node-first
+  uuid: 2d70425d-2588-42d6-a993-626ff22d26cb
+
